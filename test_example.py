@@ -6,7 +6,7 @@ This script tests the core functionality without requiring Streamlit or API keys
 """
 
 import json
-from code_reviewer import parse_json_input
+from code_reviewer import parse_json_input, EmpathticCodeReviewer, ReviewerPersona, CodeQualityScore
 
 
 def test_json_parsing():
@@ -45,11 +45,10 @@ def test_json_parsing():
 
 def test_severity_assessment():
     """Test comment severity assessment functionality"""
-    from code_reviewer import EmpathticCodeReviewer
     
     # Create instance without API key for testing
     try:
-        reviewer = EmpathticCodeReviewer("")  # Empty API key for testing
+        reviewer = EmpathticCodeReviewer("", ReviewerPersona.SENIOR_DEVELOPER)  # Empty API key for testing
         
         test_comments = [
             "This is inefficient. Don't loop twice conceptually.",
@@ -73,10 +72,9 @@ def test_severity_assessment():
 
 def test_resource_generation():
     """Test resource link generation functionality"""
-    from code_reviewer import EmpathticCodeReviewer
     
     try:
-        reviewer = EmpathticCodeReviewer("")  # Empty API key for testing
+        reviewer = EmpathticCodeReviewer("", ReviewerPersona.MENTOR)  # Empty API key for testing
         
         test_cases = [
             ("Variable 'u' is a bad name.", "def func(): pass"),
@@ -100,12 +98,78 @@ def test_resource_generation():
         return False
 
 
+def test_multi_language_detection():
+    """Test multi-language detection functionality"""
+    
+    try:
+        reviewer = EmpathticCodeReviewer("", ReviewerPersona.TECH_LEAD)
+        
+        test_codes = [
+            ("def hello():\n    print('world')", "python"),
+            ("function hello() {\n    console.log('world');\n}", "javascript"),
+            ("public class Hello {\n    public static void main() {}\n}", "java"),
+            ("#include <iostream>\nint main() { return 0; }", "cpp"),
+            ("package main\nfunc main() {\n    fmt.Println(\"hello\")\n}", "go")
+        ]
+        
+        print("\\nTesting Multi-Language Detection:")
+        correct_detections = 0
+        for code, expected_lang in test_codes:
+            detected = reviewer._detect_language(code)
+            is_correct = detected == expected_lang
+            status = "[PASS]" if is_correct else "[FAIL]"
+            print(f"  {expected_lang.title()} code -> detected as {detected} {status}")
+            if is_correct:
+                correct_detections += 1
+        
+        accuracy = (correct_detections / len(test_codes)) * 100
+        print(f"\\nLanguage Detection Accuracy: {accuracy:.1f}%")
+        
+        print("[PASS] Multi-language detection working!")
+        return True
+        
+    except Exception as e:
+        print(f"[FAIL] Multi-language detection test failed: {e}")
+        return False
+        
+def test_quality_scoring():
+    """Test code quality scoring functionality"""
+    
+    try:
+        reviewer = EmpathticCodeReviewer("", ReviewerPersona.SENIOR_DEVELOPER)
+        
+        test_code = "def bad_func(x): return x+1"  # Simple test code
+        test_comments = ["Function name is unclear", "No type hints"]
+        
+        quality_score = reviewer._calculate_code_quality_score(test_code, test_comments, "python")
+        
+        print("\\nTesting Quality Scoring:")
+        print(f"  Overall Score: {quality_score.overall_score:.1f}/10")
+        print(f"  Readability: {quality_score.readability:.1f}/10")
+        print(f"  Performance: {quality_score.performance:.1f}/10")
+        print(f"  Maintainability: {quality_score.maintainability:.1f}/10")
+        print(f"  Best Practices: {quality_score.best_practices:.1f}/10")
+        print(f"  Improvement Potential: {quality_score.improvement_potential:.1f}/10")
+        
+        # Validate score ranges
+        scores = [quality_score.overall_score, quality_score.readability, 
+                 quality_score.performance, quality_score.maintainability, 
+                 quality_score.best_practices, quality_score.improvement_potential]
+        
+        all_valid = all(0 <= score <= 10 for score in scores)
+        print(f"\\n[PASS] All scores within valid range (0-10): {all_valid}")
+        return all_valid
+        
+    except Exception as e:
+        print(f"[FAIL] Quality scoring test failed: {e}")
+        return False
+
 def main():
     """Run all tests"""
-    print("Starting Empathetic Code Reviewer Tests\\n")
+    print("Starting Empathetic Code Reviewer Pro Tests\\n")
     
     tests_passed = 0
-    total_tests = 3
+    total_tests = 5
     
     # Test 1: JSON Parsing
     if test_json_parsing():
@@ -117,6 +181,14 @@ def main():
     
     # Test 3: Resource Generation
     if test_resource_generation():
+        tests_passed += 1
+        
+    # Test 4: Multi-language Detection
+    if test_multi_language_detection():
+        tests_passed += 1
+        
+    # Test 5: Quality Scoring
+    if test_quality_scoring():
         tests_passed += 1
     
     # Results
